@@ -2,6 +2,7 @@ import time, datetime
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render_to_response
 from django.utils.datastructures import MultiValueDictKeyError
+from django.views.decorators.csrf import csrf_exempt
 from .models import DataPoint
 import re
 
@@ -10,6 +11,7 @@ class InvalidRequest(Exception):
         # Call the base class constructor with the parameters it needs
         super(InvalidRequest, self).__init__(message)
 
+@csrf_exempt
 def insert_data(request):
     """Push measurement data to database using POST requests."""
     try:
