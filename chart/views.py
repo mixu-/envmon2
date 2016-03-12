@@ -15,10 +15,10 @@ class InvalidRequest(Exception):
 def insert_data(request):
     """Push measurement data to database using POST requests."""
     try:
-        b_temp = request.POST['bedroom_temperature']
-        b_hum = request.POST['bedroom_humidity']
-    except MultiValueDictKeyError:
-        return HttpResponseBadRequest("ERROR: Missing data!")
+        b_temp = float(request.POST['bedroom_temperature'].replace(",", "."))
+        b_hum = float(request.POST['bedroom_humidity'].replace(",", "."))
+    except (MultiValueDictKeyError, ValueError):
+        return HttpResponseBadRequest("ERROR: Missing or invalid data!")
     datapoint = DataPoint(datetime=datetime.datetime.now(),
                           bedroom_temperature=b_temp,
                           bedroom_humidity=b_hum)
