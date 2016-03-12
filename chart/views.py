@@ -1,7 +1,7 @@
 import time
 from django.shortcuts import render_to_response
 from .models import DataPoint
-
+import re
 
 def linechart(request):
     """
@@ -11,27 +11,17 @@ def linechart(request):
     extra_serie = {"tooltip": {"y_start": "There are ", "y_end": " calls"},
                    "date_format": tooltip_date}
 
-    template_chartdata = {
-        'x': [],
-        'model_column1': "bedroom_temperature", #model field name
-        'model_column2': "bedroom_humidity" #model field name
-    }
-    series = {}
-    i = 1
-    #Create a mapping between series and model_column.
-    #{y1: bedroom_temperature, ...}
-    chartdata = {}
-    for key, val in template_chartdata.iteritems():
-        chartdata[key] = val
-        if key == "model_column%s" %(str(i), ):
-            series["y%s" % (str(i), )] = chartdata["model_column%s" %(str(i), )]
-            chartdata["name%s" % (str(i), )] = DataPoint._meta.get_field(template_chartdata[key]).verbose_name
-            chartdata["y%s" % (str(i), )] = []
-            chartdata["extra%s" % (str(i), )] = extra_serie
-            i += 1
+    series_map = ["bedroom_temperature", "bedroom_humidity"] #model field names
+    chartdata = {'x': []}
 
-    print series
-    print chartdata
+    i = 1
+    for field_name in series_map:
+        chartdata["y%s" % (str(i), )] = []
+        chartdata["name%s" % (str(i), )] = DataPoint._meta.get_field(field_name).verbose_name
+        chartdata["extra%s" % (str(i), )] = extra_serie
+        i += 1
+
+    #Chartdata has now been initialized with fields defined in series_map.
     points = DataPoint.objects.order_by('datetime')
     if len(points) > 0:
         for point in points:
@@ -40,15 +30,17 @@ def linechart(request):
             #If not, skip the data point.
             point_ok = True
             for key, val in chartdata.iteritems():
-                if "model_column" in key and not point._meta.get_field(val):
+                if not str(key).startswith("y"):
+                    continue
+                #This will throw a ValueError if you screw up series_map.
+                y_nr = int(re.search(r'\d+', key).group())
+                if not point._meta.get_field(series_map[y_nr-1]):
                     point_ok = False
             if point_ok: #OK to add datapoint to chart and all series.
                 chartdata["x"].append(point_epoch_ms)
-                for key, val in series.iteritems():
-                    print "%s : %s: %s" %(key, val, getattr(point, val))
-                    if True:
-                        print series[key] + " " + str(getattr(point, val))
-                        chartdata[key].append(getattr(point, val))
+                for j in xrange(len(series_map)):
+                    print series_map[j] + " " + str(getattr(point, series_map[j]))
+                    chartdata["y%s" % (str(j+1), )].append(getattr(point, series_map[j]))
 
     data = {
         'charttype': "lineWithFocusChart",
