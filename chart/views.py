@@ -59,7 +59,6 @@ def linechart(request):
             if point_ok: #OK to add datapoint to chart and all series.
                 chartdata["x"].append(point_epoch_ms)
                 for j in xrange(len(series_map)):
-                    print series_map[j] + " " + str(getattr(point, series_map[j]))
                     chartdata["y%s" % (str(j+1), )].append(getattr(point, series_map[j]))
 
     data = {
