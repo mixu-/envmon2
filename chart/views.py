@@ -1,4 +1,5 @@
-import time, datetime
+import time
+from django.utils import timezone
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render_to_response
 from django.utils.datastructures import MultiValueDictKeyError
@@ -19,7 +20,7 @@ def insert_data(request):
         b_hum = float(request.POST['bedroom_humidity'].replace(",", "."))
     except (MultiValueDictKeyError, ValueError):
         return HttpResponseBadRequest("ERROR: Missing or invalid data!")
-    datapoint = DataPoint(datetime=datetime.datetime.now(),
+    datapoint = DataPoint(datetime=timezone.now(),
                           bedroom_temperature=b_temp,
                           bedroom_humidity=b_hum)
     datapoint.save()
