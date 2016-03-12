@@ -1,5 +1,5 @@
 from django.contrib import admin
 
-from .models import IndoorDataPoint
+from .models import DataPoint
 
-admin.site.register(IndoorDataPoint)
+admin.site.register(DataPoint)

@@ -1,33 +1,53 @@
-# Create your views here.
-import random
 import time
 from django.shortcuts import render_to_response
-from .models import IndoorDataPoint
+from .models import DataPoint
 
 
 def linechart(request):
     """
     linewithfocuschart page
     """
-    points = IndoorDataPoint.objects.order_by('datetime')
-    start_time = IndoorDataPoint.objects.order_by('datetime')[:1][0].datetime
-    start_epoch_ms = int(time.mktime(start_time.timetuple())) * 1000
-
-    xdata = [int(time.mktime(d.datetime.timetuple())) * 1000 for d in points]
-    ydata = [d.indoor_temperature for d in points]
-    ydata2 = [d.indoor_humidity for d in points]
-
     tooltip_date = "%d %b %Y %H:%M:%S %p"
     extra_serie = {"tooltip": {"y_start": "There are ", "y_end": " calls"},
                    "date_format": tooltip_date}
-    chartdata = {
-        'x': xdata,
-        'name1': 'series 1', 'y1': ydata, 'extra1': extra_serie,
-        'name2': 'series 2', 'y2': ydata2, 'extra2': extra_serie
+    template_chartdata = {
+        'x': [],
+        'model_column1': "bedroom_temperature", #model field name
+        'model_column2': "bedroom_humidity" #model field name
     }
-    charttype = "lineWithFocusChart"
+    series = {}
+    i = 1
+    #Create a mapping between series and model_column.
+    #{y1: bedroom_temperature, ...}
+    chartdata = {}
+    for key, val in template_chartdata.iteritems():
+        chartdata[key] = val
+        if key == "model_column%s" %(str(i), ):
+            series[key] = chartdata["model_column%s" %(str(i), )]
+            chartdata["name%s" % (str(i), )] = DataPoint._meta.get_field(series[key]).verbose_name
+            chartdata["y%s" % (str(i), )] = []
+            chartdata["extra%s" % (str(i), )] = extra_serie
+            i += 1
+
+    print chartdata
+    points = DataPoint.objects.order_by('datetime')
+    if len(points) > 0:
+        for point in points:
+            point_epoch_ms = int(time.mktime(point.datetime.timetuple())) * 1000
+            point_ok = True
+            for key, val in chartdata.iteritems():
+                if "model_column" in key and not point._meta.get_field(val):
+                    point_ok = False
+            if point_ok:
+                chartdata["x"].append(point_epoch_ms)
+                for key, val in series.iteritems():
+                    print "%s : %s: %s" %(key, val, getattr(point, val))
+                    if True:
+                        print chartdata[key]
+                        chartdata[key].append(getattr(point, val))
+
     data = {
-        'charttype': charttype,
+        'charttype': "lineWithFocusChart",
         'chartdata': chartdata,
         'extra': {
             'x_is_date': True,
