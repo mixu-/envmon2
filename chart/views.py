@@ -1,7 +1,27 @@
-import time
+import time, datetime
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render_to_response
+from django.utils.datastructures import MultiValueDictKeyError
 from .models import DataPoint
 import re
+
+class InvalidRequest(Exception):
+    def __init__(self, message):
+        # Call the base class constructor with the parameters it needs
+        super(InvalidRequest, self).__init__(message)
+
+def insert_data(request):
+    """Push measurement data to database using POST requests."""
+    try:
+        b_temp = request.GET['bedroom_temperature']
+        b_hum = request.GET['bedroom_humidity']
+    except MultiValueDictKeyError:
+        return HttpResponseBadRequest("ERROR: Missing data!")
+    datapoint = DataPoint(datetime=datetime.datetime.now(),
+                          bedroom_temperature=b_temp,
+                          bedroom_humidity=b_hum)
+    datapoint.save()
+    return HttpResponse("OK")
 
 def linechart(request):
     """
