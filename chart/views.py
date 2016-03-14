@@ -33,7 +33,7 @@ def linechart(request):
     temp_tooltip = {"tooltip": {"y_start": "Temperature: ", "y_end": "C"},
                     "date_format": "%d %b %Y %H:%M:%S %p"}
 
-    hum_tooltip = {"tooltip": {"y_start": "Temperature: ", "y_end": "C"},
+    hum_tooltip = {"tooltip": {"y_start": "Humidity: ", "y_end": "%%RH"},
                    "date_format": "%d %b %Y %H:%M:%S %p"}
 
     series_map = ["bedroom_temperature", "bedroom_humidity"] #model field names
