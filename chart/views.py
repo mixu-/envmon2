@@ -1,11 +1,12 @@
-import time
+import time, datetime
 from django.utils import timezone
 from django.http import HttpResponse, HttpResponseBadRequest
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django.utils.datastructures import MultiValueDictKeyError
 from django.views.decorators.csrf import csrf_exempt
 from .models import DataPoint
-import re
+from django.db.models import Avg, Min, Max
+import copy
 
 class InvalidRequest(Exception):
     def __init__(self, message):
@@ -30,22 +31,31 @@ def linechart(request):
     """
     linewithfocuschart page
     """
-    temp_tooltip = {"tooltip": {"y_start": "Temperature: ", "y_end": "C"},
-                    "date_format": "%d %b %Y %H:%M:%S %p"}
 
-    hum_tooltip = {"tooltip": {"y_start": "Humidity: ", "y_end": "%%RH"},
-                   "date_format": "%d %b %Y %H:%M:%S %p"}
+    tooltip = {"tooltip": {"y_start": None, "y_end": None},
+               "date_format": "%d %b %Y %H:%M:%S %p"}
 
-    series_map = ["bedroom_temperature", "bedroom_humidity"] #model field names
-    series_tooltips = [temp_tooltip, hum_tooltip]
+    series_dict = {
+        "bedroom_temperature": {
+            "type": "Temperature",
+            "unit": "C"
+        },
+        "bedroom_humidity": {
+            "type": "Humidity",
+            "unit": "%%RH"
+        }
+    }
     chartdata = {'x': []}
-
     i = 1
-    for field_name in series_map:
+    for field_name, value in series_dict.iteritems():
+        tmp_tooltip = copy.deepcopy(tooltip)
         chartdata["y%s" % (str(i), )] = []
         chartdata["name%s" % (str(i), )] = \
             DataPoint._meta.get_field(field_name).verbose_name
-        chartdata["extra%s" % (str(i), )] = series_tooltips[i-1]
+
+        tmp_tooltip["tooltip"]["y_start"] = value["type"] + " "
+        tmp_tooltip["tooltip"]["y_end"] = value["unit"]
+        chartdata["extra%s" % (str(i), )] = tmp_tooltip
         i += 1
 
     #Chartdata has now been initialized with fields defined in series_map.
@@ -66,22 +76,54 @@ def linechart(request):
         for key, _ in chartdata.iteritems():
             if not str(key).startswith("y"):
                 continue
-            #This will throw a ValueError if you screw up series_map.
-            y_nr = int(re.search(r'\d+', key).group())
-            if not point._meta.get_field(series_map[y_nr-1]):
-                point_ok = False
+            for serie in series_dict:
+                if not point._meta.get_field(serie):
+                    point_ok = False
         if point_ok: #OK to add datapoint to chart and all series.
             chartdata["x"].append(point_epoch_ms)
-            for j in xrange(len(series_map)):
+            j=0
+            for key, val in series_dict.iteritems():
                 chartdata["y%s" % (str(j+1), )].append(\
-                    getattr(point, series_map[j]))
+                    getattr(point, key))
+                j += 1
 
+
+    ############ Summary table starts here ############
+    today = timezone.now().date()
+    week_ago = today - datetime.timedelta(days=7)
+    one_day_metrics = {}
+    week_metrics = {}
+    for field_name in series_dict:
+
+        one_day_metrics[field_name] = {}
+        one_day_metrics[field_name] = DataPoint.objects.filter(
+            datetime__gt=today).aggregate(avg=Avg(field_name),
+                                          min=Min(field_name),
+                                          max=Max(field_name))
+        one_day_metrics[field_name]["avg"] = \
+            round(one_day_metrics[field_name]["avg"], 1)
+        one_day_metrics[field_name]["name"] = DataPoint._meta.get_field(field_name).verbose_name
+
+        week_metrics[field_name] = {}
+        week_metrics[field_name] = DataPoint.objects.filter(
+            datetime__gt=week_ago).aggregate(avg=Avg(field_name),
+                                             min=Min(field_name),
+                                             max=Max(field_name))
+        week_metrics[field_name]["avg"] = \
+            round(week_metrics[field_name]["avg"], 1)
+        week_metrics[field_name]["name"] = DataPoint._meta.get_field(field_name).verbose_name
+
+
+    ###### Piece things together and render. ##########
     data = {
         'charttype': "lineWithFocusChart",
         'chartdata': chartdata,
         'extra': {
             'x_is_date': True,
             'x_axis_format': "%d.%m.%Y %H:%M"
-        }
+        },
+        "one_day_metrics": one_day_metrics,
+        "week_metrics": week_metrics,
     }
-    return render_to_response('chart/linechart.html', data)
+
+    return render(request, 'chart/linechart.html', data)

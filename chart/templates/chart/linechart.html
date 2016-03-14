@@ -8,5 +8,19 @@
     {% load_chart charttype chartdata "linewithfocuschart_container" extra %}
 </head>
 <body>
-    {% include_container "linewithfocuschart_container" 800 '70%' %}
+  <h1>Home Environment Monitor</h1>
+    {% include_container "linewithfocuschart_container" 600 '70%' %}
+
+  <h2>Summary</h2>
+  <table>
+  <tr><td></td><td>Max</td><td>Min</td><td>Avg</td></tr>
+  <tr><td colspan=4><b>Today</b></td></tr>
+  {% for key, value in one_day_metrics.items %}
+    <tr><td>{{value.name}}</td><td>{{value.max}}</td><td>{{value.min}}</td><td>{{value.avg}}</td></tr>
+  {% endfor %}
+  <tr><td colspan=4><b>Past 7 days</b></td></tr>
+  {% for key, value in week_metrics.items %}
+    <tr><td>{{value.name}}</td><td>{{value.max}}</td><td>{{value.min}}</td><td>{{value.avg}}</td></tr>
+  {% endfor %}
+  </table>
 </body>
