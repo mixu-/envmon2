@@ -1,5 +1,7 @@
-db.sqlite
+db.sqlite3
 *.pyc
+*/migrations/*
+components/
 
 # Windows image file caches
 Thumbs.db

@@ -43,29 +43,38 @@ def linechart(request):
     i = 1
     for field_name in series_map:
         chartdata["y%s" % (str(i), )] = []
-        chartdata["name%s" % (str(i), )] = DataPoint._meta.get_field(field_name).verbose_name
+        chartdata["name%s" % (str(i), )] = \
+            DataPoint._meta.get_field(field_name).verbose_name
         chartdata["extra%s" % (str(i), )] = series_tooltips[i-1]
         i += 1
 
     #Chartdata has now been initialized with fields defined in series_map.
     points = DataPoint.objects.order_by('datetime')
-    if len(points) > 0:
-        for point in points:
-            point_epoch_ms = int(time.mktime(point.datetime.timetuple())) * 1000
-            #Check that the point has all the data points being plotted.
-            #If not, skip the data point.
-            point_ok = True
-            for key, val in chartdata.iteritems():
-                if not str(key).startswith("y"):
-                    continue
-                #This will throw a ValueError if you screw up series_map.
-                y_nr = int(re.search(r'\d+', key).group())
-                if not point._meta.get_field(series_map[y_nr-1]):
-                    point_ok = False
-            if point_ok: #OK to add datapoint to chart and all series.
-                chartdata["x"].append(point_epoch_ms)
-                for j in xrange(len(series_map)):
-                    chartdata["y%s" % (str(j+1), )].append(getattr(point, series_map[j]))
+    accurate_period_ms = 1000 * 3600 * 2 #2 hours of accurate data.
+    previous_epoch_ms = 0
+    point_interval = 1000 * 900 #Only show a data point every X ms (900s)
+    for point in points:
+        point_epoch_ms = time.mktime(point.datetime.timetuple()) * 1000
+        now_epoch_ms = time.mktime(timezone.now().timetuple()) * 1000
+        if point_epoch_ms < now_epoch_ms - accurate_period_ms and \
+                point_epoch_ms - previous_epoch_ms < point_interval:
+            continue
+        previous_epoch_ms = point_epoch_ms
+        #Check that the point has all the data points being plotted.
+        #If not, skip the data point.
+        point_ok = True
+        for key, _ in chartdata.iteritems():
+            if not str(key).startswith("y"):
+                continue
+            #This will throw a ValueError if you screw up series_map.
+            y_nr = int(re.search(r'\d+', key).group())
+            if not point._meta.get_field(series_map[y_nr-1]):
+                point_ok = False
+        if point_ok: #OK to add datapoint to chart and all series.
+            chartdata["x"].append(point_epoch_ms)
+            for j in xrange(len(series_map)):
+                chartdata["y%s" % (str(j+1), )].append(\
+                    getattr(point, series_map[j]))
 
     data = {
         'charttype': "lineWithFocusChart",
