@@ -30,18 +30,21 @@ def linechart(request):
     """
     linewithfocuschart page
     """
-    tooltip_date = "%d %b %Y %H:%M:%S %p"
-    extra_serie = {"tooltip": {"y_start": "There are ", "y_end": " calls"},
-                   "date_format": tooltip_date}
+    temp_tooltip = {"tooltip": {"y_start": "Temperature: ", "y_end": "C"},
+                    "date_format": "%d %b %Y %H:%M:%S %p"}
+
+    hum_tooltip = {"tooltip": {"y_start": "Temperature: ", "y_end": "C"},
+                   "date_format": "%d %b %Y %H:%M:%S %p"}
 
     series_map = ["bedroom_temperature", "bedroom_humidity"] #model field names
+    series_tooltips = [temp_tooltip, hum_tooltip]
     chartdata = {'x': []}
 
     i = 1
     for field_name in series_map:
         chartdata["y%s" % (str(i), )] = []
         chartdata["name%s" % (str(i), )] = DataPoint._meta.get_field(field_name).verbose_name
-        chartdata["extra%s" % (str(i), )] = extra_serie
+        chartdata["extra%s" % (str(i), )] = series_tooltips[i-1]
         i += 1
 
     #Chartdata has now been initialized with fields defined in series_map.
@@ -69,7 +72,7 @@ def linechart(request):
         'chartdata': chartdata,
         'extra': {
             'x_is_date': True,
-            'x_axis_format': "%d %b %Y %H"
+            'x_axis_format': "%d.%m.%Y %H:%M"
         }
     }
     return render_to_response('chart/linechart.html', data)
