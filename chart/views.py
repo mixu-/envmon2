@@ -21,7 +21,13 @@ def insert_data(request):
         b_hum = float(request.POST['bedroom_humidity'].replace(",", "."))
     except (MultiValueDictKeyError, ValueError):
         return HttpResponseBadRequest("ERROR: Missing or invalid data!")
-    datapoint = DataPoint(datetime=timezone.now(),
+    try:
+        timestamp = int(request.POST['datetime'])
+    except Exception:
+        pass
+    if not timestamp:
+        timestamp = timezone.now()
+    datapoint = DataPoint(datetime=timestamp,
                           bedroom_temperature=b_temp,
                           bedroom_humidity=b_hum)
     datapoint.save()
@@ -120,7 +126,7 @@ def linechart(request):
         'chartdata': chartdata,
         'extra': {
             'x_is_date': True,
-            'x_axis_format': "%d.%m.%Y %H:%M"
+            'x_axis_format': "%d.%m. %H:%M"
         },
         "one_day_metrics": one_day_metrics,
         "week_metrics": week_metrics,
