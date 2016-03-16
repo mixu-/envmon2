@@ -17,16 +17,20 @@ class InvalidRequest(Exception):
 def insert_data(request):
     """Push measurement data to database using POST requests."""
     try:
+
         b_temp = float(request.POST['bedroom_temperature'].replace(",", "."))
         b_hum = float(request.POST['bedroom_humidity'].replace(",", "."))
-    except (MultiValueDictKeyError, ValueError):
-        return HttpResponseBadRequest("ERROR: Missing or invalid data!")
-    try:
-        timestamp = int(request.POST['datetime'])
-    except Exception:
-        pass
-    if not timestamp:
-        timestamp = timezone.now()
+    except (MultiValueDictKeyError, ValueError) as err:
+        return HttpResponseBadRequest("ERROR: Missing or invalid data!%s" %
+                                      (err, ))
+    timestamp = timezone.now()
+    if "epoch" in request.POST:
+        try:
+            timestamp = datetime.datetime.\
+                fromtimestamp(int(request.POST['epoch']))
+        except Exception:
+            return HttpResponseBadRequest("Failed to convert %s to datetime" %
+                                          (request.POST['epoch'], ))
     datapoint = DataPoint(datetime=timestamp,
                           bedroom_temperature=b_temp,
                           bedroom_humidity=b_hum)
@@ -87,7 +91,7 @@ def linechart(request):
                     point_ok = False
         if point_ok: #OK to add datapoint to chart and all series.
             chartdata["x"].append(point_epoch_ms)
-            j=0
+            j = 0
             for key, val in series_dict.iteritems():
                 chartdata["y%s" % (str(j+1), )].append(\
                     getattr(point, key))
